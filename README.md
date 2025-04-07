@@ -1,4 +1,4 @@
-# Analisis descriptivo y cálculo de poder predictivo para datos reales
+# Carga de datos y librerias
 rm(list=ls())
 RNGkind(kind="Mersenne-Twister", normal.kind = "Inversion", sample.kind="Rejection")
 set.seed(2054)
@@ -27,7 +27,7 @@ Datos$PST <- as.factor(Datos$PST)
 Datos$NVP <- as.factor(Datos$NVP)
 Datos$TAL <- as.factor(Datos$TAL)
 Datos$Y <- as.factor(Datos$Y)
-# Análisis Descriptivo
+## Análisis Descriptivo de los datos reales para predecir una enfermedad de corazón
 Datos0 <- Datos %> % filter(Y == 0)
 Datos1 <- Datos %> % filter(Y == 1)
 for (i in names(Datos0)) {
@@ -53,7 +53,7 @@ select_if(is.numeric) %> %
 mutate(Y = Datos$Y)
 BP_Dat<- Datos_numericos %> %
 gather(key = "variable", value = "value", -Y)
-# Diagramas de caja por variable numérica
+### Diagramas de caja por variable numérica
 ggplot(BP_Dat, aes(x = Y, y = value, fill = Y)) +
 geom_boxplot() +
 facet_wrap(~ variable, scales = "free", ncol = 3) +
@@ -77,23 +77,23 @@ dplyr::mutate(Y = Datos$Y)
 colores <- colorRampPalette(c("red", "white", "blue"))(200)
 M_cor0 <- round(cor(Datos_num0),4)
 M_cor1 <- round(cor(Datos_num1),4)
-# Diagrama de correlación de variables en numericas y cat. nominales(NEC)
+### Diagrama de correlación de variables en numericas y cat. nominales(NEC)
 corrplot(M_cor0, method = "circle", col = colores)
-# Diagrama de correlación de variables en numericas y cat. nominales(EC)
+### Diagrama de correlación de variables en numericas y cat. nominales(EC)
 corrplot(M_cor1, method = "circle", col = colores)
-# Análisis de grupos via componentes principales
+### Análisis de grupos via componentes principales
 pca_result <- PCA(Datos_num[-8], scale.unit = TRUE)
 pca_dat <- data.frame(pca_result$ind$coord,CLASE = as.factor(Datos$CLASE))
 correlaciones <- pca_result$var$coord
-# Graficos Dim1/Dim2;Dim1/Dim3;Dim1/Dim4
+### Graficos Dim1/Dim2;Dim1/Dim3;Dim1/Dim4
 P1 <-ggplot(pca_dat, aes(Dim.1, Dim.2, color = CLASE)) + geom_point(size=2.5)
 P2 <-ggplot(pca_dat, aes(Dim.1, Dim.3, color = CLASE)) + geom_point(size=2.5)
 P3 <-ggplot(pca_dat, aes(Dim.1, Dim.4, color = CLASE)) + geom_point(size=2.5)
 grid.arrange(P1, P2, P3, ncol = 3)
 DatosT <- Datos
 # Cálculo del poder predictivo datos reales #
-# Funciones Auxiliares --------------------------------------------
-## Función para generar B conjuntos de Train y Test
+## Funciones Auxiliares --------------------------------------------
+### Función para generar B conjuntos de Train y Test
 ConjuntoEvaluacion <- function(B, por, DataP){
 ParTrainTest=createDataPartition(DataP$Y, p = por,
 list = FALSE,
@@ -109,7 +109,7 @@ Id[[i]]<- i
 return(list(Train = Train,
 Test = Test, Id=Id))
 }
-## Función para calcular los errores de clasificación por Y
+### Función para calcular los errores de clasificación por Y
 ErroresClasificacion <- function(x, y){
 Y0Train <- x[1,2]/sum(x[1,])
 Y1Train <- x[2,1]/sum(x[2,])
@@ -119,7 +119,7 @@ Y1Test <- y[2,1]/sum(y[2,])
 GlobalTest <- 1-sum(diag(y))/sum(y)
 return(data.frame(Y0Train,Y1Train,GlobalTrain,Y0Test,Y1Test,GlobalTest))
 }
-## Función para generar resultados.
+### Función para generar resultados.
 GenerarResultados <- function(DatosX,Method, workers) {
 plan(strategy = multisession,
 workers = workers)
@@ -143,8 +143,8 @@ add_column( Method = Method,
 return(list(Individual = Aux1,
 Global = Aux2))
 }
-# Métodos ---------------------------------------------------------
-# Regresión Logística
+## Métodos ---------------------------------------------------------
+### Regresión Logística
 logistic <- function(Train, Test, Id) {
 logit <- glm(formula = Y~., family = binomial(link=logit), data = Train)
 PredTrain <- factor(ifelse(predict(object = logit,
@@ -158,7 +158,7 @@ type = "response") > .5,
 return(list(TrainGlobal = table(Train$Y, PredTrain),
 TestGlobal = table(Test$Y, PredTest)))
 }
-# Regresión L. Lasso
+### Regresión L. Lasso
 logistic_lasso <- function(Train, Test, Id) {
 XTrain <- model.matrix(Y ~ ., data = Train)[,-1]
 YTrain <- Train$Y
@@ -185,7 +185,7 @@ s = "lambda.min") > .5,
 return(list(TrainGlobal = table(Train$Y, PredTrain),
 TestGlobal = table(Test$Y, PredTest)))
 }
-# Regresión L. Lasso (2
+### Regresión L. Lasso (2)
 logistic2_lasso <- function(Train, Test, Id) {
 XTrain <- model.matrix(Y ~ .ˆ2, data = Train)[,-1]
 YTrain <- Train$Y
@@ -212,7 +212,7 @@ s = "lambda.min") > .5,
 return(list(TrainGlobal = table(Train$Y, PredTrain),
 TestGlobal = table(Test$Y, PredTest)))
 }
-# Random Forest
+### Bosque aleatorio
 RandomForestTuneOOB <- function(Train, Test, Id) {
 mallamtry <- seq(1,10,1)
 mallantree <- c(100, 500, 1000)
@@ -262,7 +262,7 @@ type = "class")
 return(list(TrainGlobal = table(Train$Y, PredTrain),
 TestGlobal = table(Test$Y, PredTest)))
 }
-# XGBoost con tuneo de relleno espacial
+### XGBoost con tuneo de relleno espacial
 XGBtunetinyBSF <- function(Train, Test, Id ) {
 vb_train <- Train
 vb_test <- Test
@@ -317,7 +317,7 @@ type = "class")$.pred_class
 return(list(TrainGlobal = table(Train$Y, PredTrain),
 TestGlobal = table(Test$Y, PredTest)))
 }
-# XGBoost con busqueda en malla aleatoria
+### XGBoost con busqueda en malla aleatoria
 XGBtunetinyBA <- function(Train, Test, Id ) {
 vb_train <- Train
 vb_test <- Test
@@ -364,7 +364,7 @@ type = "class")$.pred_class
 return(list(TrainGlobal = table(Train$Y, PredTrain),
 TestGlobal = table(Test$Y, PredTest)))
 }
-# XGBoost con busqueda por optimización bayesiana
+### XGBoost con busqueda por optimización bayesiana
 XGBtuneCV <- function(Train, Test, Id) {
 DM_TR <- model.matrix(Y~.-1,data=Train)
 DM_TE <- model.matrix(Y~.-1,data=Test)
@@ -413,7 +413,7 @@ PredTest <- ifelse(PredTest_prob> 0.5, 1, 0)
 return(list(TrainGlobal = table(Train$Y, PredTrain),
 TestGlobal = table(Test$Y, PredTest)))
 }
-# XGBoost con optimización por métodos de carrera
+### XGBoost con optimización por métodos de carrera
 XGBtuneRM <- function(Train, Test, Id) {
 xgb_spec <- boost_tree(trees = tune(),tree_depth = tune(),
 min_n = tune(),loss_reduction = tune(),
@@ -449,7 +449,7 @@ type = "class")$.pred_class
 return(list(TrainGlobal = table(Train$Y, PredTrain),
 TestGlobal = table(Test$Y, PredTest)))
 }
-# Corridas métodos -----------------------------------------------------
+## Corridas métodos -----------------------------------------------------
 set.seed(2054)
 Datos <- ConjuntoEvaluacion(B=100, por=.8,DataP=DatosT)
 M1 <- GenerarResultados(DatosX = Datos,
@@ -475,13 +475,10 @@ workers = availableCores())
 M8<- GenerarResultados(DatosX = Datos,
 Method = "XGBtuneRM",
 workers = availableCores())
-# Cálculo del poder predictivo datos simulados #
+# Cálculo del poder predictivo datos simulados
 rm(list = ls())
 gc()
-## Definición de random number generator (RNG)
-## RNGkind(kind="Mersenne-Twister", normal.kind = "Inversion")
-## Para versiones de R mayores o iguales a 3.6 (por reproducibilidad con
-## versiones anteriores a 3.6 usar "Rounding)
+## Definición de random number generator (RNG) RNGkind(kind="Mersenne-Twister", normal.kind = "Inversion") Para versiones de R mayores o iguales a 3.6 (por reproducibilidad con versiones anteriores a 3.6 usar "Rounding)
 RNGkind(kind="Mersenne-Twister", normal.kind = "Inversion", sample.kind="Rejection")
 set.seed(12345)
 library(xgboost);library(mvtnorm);library(matrixcalc)
@@ -491,7 +488,7 @@ library(e1071); library(MASS); library(glmnet)
 library(randomForest);library(caret);library(tidymodels)
 library(dials); library(tune); library(finetune)
 library(ParBayesianOptimization)
-## Código para generar las muestras de una Gaussiana condicional
+### Código para generar las muestras de una Gaussiana condicional
 {
 Probs.cbin=function(rho, p1){
 p11=rho*(p1-(p1)ˆ2)+ (p1)ˆ2
@@ -555,9 +552,8 @@ hsC <- c(scalh*(asC[1]-rhoC[1]ˆ2)/(1-rhoC[1]ˆ2),0, 0,-scalh*(asC[4]-rhoC[2]ˆ2
 nCont <- 6
 argsSim <- list(nsimC, rhoC, p.1C, asC,hsC , nCat, nCont)
 }
-# Funciones Auxiliares ----------------------------------------------------
-## Función para generar B conjuntos de Train (con nsim simulaciones por Y) y
-## B conjuntos de Test (son 1000 simulaciones por Y).
+## Funciones Auxiliares ----------------------------------------------------
+## Función para generar B conjuntos de Train (con nsim simulaciones por Y) y B conjuntos de Test (son 1000 simulaciones por Y). 
 ConjuntoEvaluacion <- function(B, nsim){
 nsimtest <- c(1000,1000)
 nsimtrain <- c(nsim,nsim)
@@ -575,8 +571,7 @@ Id[[i]]<- i
 return(list(Train = Train,
 Test = Test, Id=Id))
 }
-## Función para calcular los errores de clasificación por Y y
-## globales (para Train y Test).
+## Función para calcular los errores de clasificación por Y y globales (para Train y Test).
 ErroresClasificacion <- function(x, y){
 Y0Train <- x[1,2]/sum(x[1,])
 Y1Train <- x[2,1]/sum(x[2,])
@@ -612,8 +607,8 @@ Method = Method,
 return(list(Individual = Aux1,
 Global = Aux2))
 }
-# Métodos --------------------------------
-#Regresión Logística
+### Métodos --------------------------------
+### Regresión Logística
 logistic <- function(Train, Test, Id) {
 logit <- glm(formula = Y~., family = binomial(link=logit), data = Train)
 PredTrain <- factor(ifelse(predict(object = logit,
@@ -627,7 +622,7 @@ type = "response") > .5,
 return(list(TrainGlobal = table(Train$Y, PredTrain),
 TestGlobal = table(Test$Y, PredTest)))
 }
-# Regresión L. Lasso
+### Regresión L. Lasso
 logistic_lasso <- function(Train, Test, Id) {
 XTrain <- model.matrix(Y ~ ., data = Train)[,-1]
 YTrain <- Train$Y
@@ -654,7 +649,7 @@ s = "lambda.min") > .5,
 return(list(TrainGlobal = table(Train$Y, PredTrain),
 TestGlobal = table(Test$Y, PredTest)))
 }
-# Regresión L. Lasso (2)
+### Regresión L. Lasso (2)
 logistic2_lasso <- function(Train, Test, Id) {
 XTrain <- model.matrix(Y ~ .ˆ2, data = Train)[,-1]
 YTrain <- Train$Y
@@ -681,7 +676,7 @@ s = "lambda.min") > .5,
 return(list(TrainGlobal = table(Train$Y, PredTrain),
 TestGlobal = table(Test$Y, PredTest)))
 }
-### Modelo Random Forest
+### Modelo Bosque aleatorio
 RandomForestTuneOOB <- function(Train, Test, Id) {
 mallamtry <- seq(1,10,1)
 mallantree <- c(100, 500, 1000)
@@ -730,7 +725,7 @@ type = "class")
 return(list(TrainGlobal = table(Train$Y, PredTrain),
 TestGlobal = table(Test$Y, PredTest)))
 }
-# XGBoost con busqueda por rellenado espacial
+### XGBoost con busqueda por rellenado espacial
 XGBtunetinyBSF <- function(Train, Test, Id ) {
 vb_train <- Train
 vb_test <- Test
@@ -782,7 +777,7 @@ type = "class")$.pred_class
 return(list(TrainGlobal = table(Train$Y, PredTrain),
 TestGlobal = table(Test$Y, PredTest)))
 }
-# XGBoost con busqueda en malla aleatoria
+### XGBoost con busqueda en malla aleatoria
 XGBtunetinyBA <- function(Train, Test, Id ) {
 vb_train <- Train
 vb_test <- Test
@@ -833,7 +828,7 @@ type = "class")$.pred_class
 return(list(TrainGlobal = table(Train$Y, PredTrain),
 TestGlobal = table(Test$Y, PredTest)))
 }
-# XGBoost con busqueda por optimización bayesiana
+### XGBoost con busqueda por optimización bayesiana
 XGBtuneCV <- function(Train, Test, Id) {
 DM_TR <- model.matrix(Y~.-1,data=Train)
 DM_TE <- model.matrix(Y~.-1,data=Test)
@@ -947,7 +942,7 @@ type = "class")$.pred_class
 return(list(TrainGlobal = table(Train$Y, PredTrain),
 TestGlobal = table(Test$Y, PredTest)))
 }
-# Corridas métodos --------------------------------------------------------
+### Corridas métodos --------------------------------------------------------
 nsim <- c(50,100,1000)
 Datos <- lapply(X = nsim,
 FUN = ConjuntoEvaluacion,
